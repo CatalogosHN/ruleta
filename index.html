@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Ruleta de Premios - KeyAuth</title>
+  <style>
+    :root{
+      --bg1:#09090f;
+      --bg2:#171728;
+      --card:#11111d;
+      --card2:#1b1b2d;
+      --text:#ffffff;
+      --muted:#b8b8c9;
+      --gold:#ffd166;
+      --red:#ff4d6d;
+      --green:#4ade80;
+      --blue:#60a5fa;
+      --line:rgba(255,255,255,.12);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 20% 10%, rgba(255,209,102,.18), transparent 28%),
+        radial-gradient(circle at 80% 20%, rgba(96,165,250,.16), transparent 30%),
+        radial-gradient(circle at 40% 90%, rgba(255,77,109,.16), transparent 35%),
+        linear-gradient(135deg,var(--bg1),var(--bg2));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+    }
+
+    .app{
+      width:min(980px,100%);
+      display:grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap:18px;
+      align-items:stretch;
+    }
+
+    .panel,.wheel-card{
+      background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));
+      border:1px solid var(--line);
+      border-radius:26px;
+      box-shadow:0 24px 70px rgba(0,0,0,.35);
+      backdrop-filter: blur(14px);
+      overflow:hidden;
+    }
+
+    .panel{
+      padding:24px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:18px;
+    }
+
+    .logo{
+      width:46px;
+      height:46px;
+      border-radius:16px;
+      background:linear-gradient(135deg,var(--gold),var(--red));
+      display:grid;
+      place-items:center;
+      font-weight:900;
+      color:#111;
+      box-shadow:0 10px 28px rgba(255,209,102,.25);
+    }
+
+    h1{
+      font-size:28px;
+      line-height:1.05;
+      margin:0;
+      letter-spacing:-.6px;
+    }
+
+    .sub{
+      color:var(--muted);
+      font-size:14px;
+      margin:8px 0 20px;
+      line-height:1.45;
+    }
+
+    label{
+      display:block;
+      color:#e7e7f3;
+      font-size:13px;
+      font-weight:700;
+      margin:14px 0 7px;
+    }
+
+    input{
+      width:100%;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.25);
+      color:white;
+      border-radius:14px;
+      padding:14px 14px;
+      outline:none;
+      font-size:15px;
+    }
+
+    input:focus{
+      border-color:rgba(255,209,102,.65);
+      box-shadow:0 0 0 4px rgba(255,209,102,.12);
+    }
+
+    .btn{
+      width:100%;
+      border:0;
+      cursor:pointer;
+      margin-top:14px;
+      border-radius:16px;
+      padding:15px 16px;
+      color:#111;
+      font-weight:900;
+      font-size:15px;
+      background:linear-gradient(135deg,var(--gold),#ff9f1c);
+      box-shadow:0 12px 30px rgba(255,209,102,.22);
+      transition:.2s transform,.2s opacity;
+    }
+
+    .btn:hover{transform:translateY(-1px)}
+    .btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      transform:none;
+    }
+
+    .btn.secondary{
+      background:rgba(255,255,255,.08);
+      color:white;
+      box-shadow:none;
+      border:1px solid rgba(255,255,255,.12);
+    }
+
+    .status{
+      margin-top:14px;
+      min-height:48px;
+      border-radius:16px;
+      padding:12px;
+      font-size:13px;
+      color:var(--muted);
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.08);
+      white-space:pre-line;
+    }
+
+    .status.ok{color:#d9ffe6;border-color:rgba(74,222,128,.28);background:rgba(74,222,128,.08)}
+    .status.err{color:#ffd4dc;border-color:rgba(255,77,109,.3);background:rgba(255,77,109,.08)}
+    .status.warn{color:#fff1c2;border-color:rgba(255,209,102,.32);background:rgba(255,209,102,.08)}
+
+    .small{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.45;
+      margin-top:14px;
+    }
+
+    .wheel-card{
+      padding:18px;
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      min-height:610px;
+    }
+
+    .wheel-wrap{
+      width:min(520px,92vw);
+      aspect-ratio:1/1;
+      position:relative;
+      display:grid;
+      place-items:center;
+      margin-top:8px;
+    }
+
+    canvas{
+      width:100%;
+      height:100%;
+      display:block;
+      filter:drop-shadow(0 24px 34px rgba(0,0,0,.45));
+      transform:rotate(0deg);
+    }
+
+    .pointer{
+      position:absolute;
+      top:-4px;
+      left:50%;
+      transform:translateX(-50%);
+      width:0;height:0;
+      border-left:22px solid transparent;
+      border-right:22px solid transparent;
+      border-top:0;
+      border-bottom:42px solid var(--gold);
+      z-index:5;
+      filter:drop-shadow(0 6px 8px rgba(0,0,0,.45));
+    }
+
+    .center{
+      position:absolute;
+      width:92px;
+      height:92px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      text-align:center;
+      font-size:12px;
+      line-height:1.1;
+      font-weight:1000;
+      color:#111;
+      background:linear-gradient(135deg,#fff3b0,var(--gold));
+      border:7px solid rgba(255,255,255,.85);
+      box-shadow:0 12px 30px rgba(0,0,0,.35);
+      z-index:4;
+      user-select:none;
+    }
+
+    .result{
+      width:100%;
+      margin-top:16px;
+      border-radius:20px;
+      padding:14px;
+      background:rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.1);
+      text-align:center;
+      min-height:72px;
+    }
+
+    .result b{
+      color:var(--gold);
+      font-size:18px;
+    }
+
+    .preview{
+      margin:12px auto 0;
+      width:min(170px,70%);
+      aspect-ratio:1/1;
+      border-radius:18px;
+      object-fit:cover;
+      border:1px solid rgba(255,255,255,.18);
+      display:none;
+    }
+
+    .hidden{display:none!important;}
+
+    @media(max-width:850px){
+      body{padding:10px;align-items:flex-start}
+      .app{grid-template-columns:1fr}
+      .panel{padding:18px}
+      h1{font-size:24px}
+      .wheel-card{min-height:auto;padding:12px 10px 18px}
+      .wheel-wrap{width:min(440px,96vw)}
+      .center{width:78px;height:78px;font-size:11px;border-width:6px}
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel">
+      <div class="brand">
+        <div class="logo">🎁</div>
+        <div>
+          <h1>Ruleta de Premios</h1>
+          <div class="sub">1 key de KeyAuth = 1 cliente = 1 intento.</div>
+        </div>
+      </div>
+
+      <label for="licenseInput">Key del cliente</label>
+      <input id="licenseInput" placeholder="Ingrese su key aquí" autocomplete="off" />
+
+      <button id="loginBtn" class="btn">Validar key y desbloquear ruleta</button>
+      <button id="spinBtn" class="btn hidden">Girar ruleta</button>
+      <button id="reloadBtn" class="btn secondary hidden">Consultar resultado guardado</button>
+
+      <div id="status" class="status">Esperando key del cliente...</div>
+
+      <div class="small">
+        IMPORTANTE: esta versión es solo <b>index.html + KeyAuth</b>. No usa Cloudflare, Firebase ni servidor.
+        Para cambiar premios, edita el arreglo <b>PREMIOS</b> dentro del HTML y sube las imágenes a la carpeta <b>images/</b>.
+      </div>
+    </section>
+
+    <section class="wheel-card">
+      <div class="wheel-wrap">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="900" height="900"></canvas>
+        <div class="center">SUERTE<br>REAL</div>
+      </div>
+
+      <div class="result" id="resultBox">
+        <span>Aún no hay resultado.</span>
+        <img id="resultImg" class="preview" alt="Premio ganado" />
+      </div>
+    </section>
+  </main>
+
+<script>
+/* ==========================================================
+   CONFIGURACIÓN KEYAUTH
+   Pega aquí los datos de tu app de KeyAuth.
+   En KeyAuth dashboard: App -> JavaScript tab / Settings
+========================================================== */
+
+const KEYAUTH = {
+  name: "ruletaint",
+  ownerid: "RZsbvRZczd",
+  version: "1.0",
+  api: "https://keyauth.win/api/1.3/"
+};
+
+/* ==========================================================
+   PREMIOS
+   Sube tus imágenes a /images/ y agrega cada una aquí.
+   La ruleta se ajusta automáticamente según la cantidad.
+========================================================== */
+
+const PREMIOS = [
+  { nombre: "Premio 1", imagen: "images/premio1.jpeg" },
+  { nombre: "Premio 2", imagen: "images/premio2.jpeg" },
+  { nombre: "Premio 3", imagen: "images/premio3.jpeg" },
+  { nombre: "Premio 4", imagen: "images/premio4.jpeg" },
+  { nombre: "Premio 5", imagen: "images/premio5.jpeg" },
+  { nombre: "Premio 6", imagen: "images/premio6.jpeg" }
+];
+
+/* ==========================================================
+   AJUSTES
+========================================================== */
+
+const VAR_USADO = "ruleta_usado";
+const VAR_PREMIO = "ruleta_premio";
+const VAR_FECHA = "ruleta_fecha";
+const GIRO_DURACION_MS = 6200;
+const VUELTAS_EXTRA = 7;
+
+/* ==========================================================
+   ESTADO
+========================================================== */
+
+let sessionid = "";
+let currentLicense = "";
+let currentHWID = "";
+let spinning = false;
+let rotationDeg = 0;
+
+const el = (id) => document.getElementById(id);
+const licenseInput = el("licenseInput");
+const loginBtn = el("loginBtn");
+const spinBtn = el("spinBtn");
+const reloadBtn = el("reloadBtn");
+const statusBox = el("status");
+const resultBox = el("resultBox");
+const resultImg = el("resultImg");
+const canvas = el("wheel");
+const ctx = canvas.getContext("2d");
+
+const prizeImages = new Map();
+
+/* ==========================================================
+   UTILIDADES
+========================================================== */
+
+function setStatus(msg, type = "") {
+  statusBox.className = "status" + (type ? " " + type : "");
+  statusBox.textContent = msg;
+}
+
+function cleanKey(s) {
+  return String(s || "").trim();
+}
+
+async function sha256(text) {
+  const enc = new TextEncoder().encode(text);
+  const buffer = await crypto.subtle.digest("SHA-256", enc);
+  return [...new Uint8Array(buffer)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function getWebHWID() {
+  let canvasHash = "";
+  try {
+    const c = document.createElement("canvas");
+    c.width = 240; c.height = 80;
+    const x = c.getContext("2d");
+    x.textBaseline = "top";
+    x.font = "18px Arial";
+    x.fillStyle = "#f60";
+    x.fillRect(10, 10, 100, 40);
+    x.fillStyle = "#069";
+    x.fillText("RAUDA-RULETA-HWID", 12, 18);
+    canvasHash = c.toDataURL();
+  } catch(e) {
+    canvasHash = "canvas_blocked";
+  }
+
+  let localId = localStorage.getItem("ruleta_local_id");
+  if (!localId) {
+    localId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();
+    localStorage.setItem("ruleta_local_id", localId);
+  }
+
+  const raw = [
+    navigator.userAgent,
+    navigator.language,
+    navigator.platform,
+    screen.width + "x" + screen.height,
+    screen.colorDepth,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || "",
+    navigator.deviceMemory || "",
+    canvasHash,
+    localId
+  ].join("|");
+
+  return await sha256(raw);
+}
+
+function apiURL(params) {
+  const u = new URL(KEYAUTH.api);
+  Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v ?? ""));
+  return u.toString();
+}
+
+async function keyauthRequest(params) {
+  const url = apiURL(params);
+  const res = await fetch(url, { method: "GET", cache: "no-store" });
+  const text = await res.text();
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error("Respuesta no JSON de KeyAuth: " + text.slice(0, 120));
+  }
+}
+
+async function initKeyAuth() {
+  const data = await keyauthRequest({
+    type: "init",
+    ver: KEYAUTH.version,
+    name: KEYAUTH.name,
+    ownerid: KEYAUTH.ownerid
+  });
+
+  if (!data.success) {
+    throw new Error(data.message || "No se pudo inicializar KeyAuth.");
+  }
+
+  sessionid = data.sessionid;
+  return data;
+}
+
+async function licenseLogin(key, hwid) {
+  const data = await keyauthRequest({
+    type: "license",
+    key,
+    sessionid,
+    name: KEYAUTH.name,
+    ownerid: KEYAUTH.ownerid,
+    hwid
+  });
+
+  if (!data.success) {
+    throw new Error(data.message || "Key inválida o no autorizada.");
+  }
+
+  return data;
+}
+
+async function getVar(name) {
+  const data = await keyauthRequest({
+    type: "getvar",
+    var: name,
+    sessionid,
+    name: KEYAUTH.name,
+    ownerid: KEYAUTH.ownerid
+  });
+
+  if (!data.success) return "";
+  return data.response || data.message || "";
+}
+
+async function setVar(name, value) {
+  const data = await keyauthRequest({
+    type: "setvar",
+    var: name,
+    data: value,
+    sessionid,
+    name: KEYAUTH.name,
+    ownerid: KEYAUTH.ownerid
+  });
+
+  if (!data.success) {
+    throw new Error(data.message || "No se pudo guardar variable.");
+  }
+
+  return data;
+}
+
+/* ==========================================================
+   RULETA
+========================================================== */
+
+function loadPrizeImages() {
+  PREMIOS.forEach((p, i) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = p.imagen;
+    img.onload = () => {
+      prizeImages.set(i, img);
+      drawWheel(rotationDeg);
+    };
+    img.onerror = () => {
+      prizeImages.set(i, null);
+      drawWheel(rotationDeg);
+    };
+  });
+}
+
+function drawWheel(deg = 0) {
+  const n = PREMIOS.length;
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  const r = Math.min(cx, cy) - 28;
+  const seg = (Math.PI * 2) / n;
+
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate((deg * Math.PI) / 180);
+
+  for (let i = 0; i < n; i++) {
+    const start = -Math.PI / 2 + i * seg;
+    const end = start + seg;
+
+    const grad = ctx.createRadialGradient(0, 0, 20, 0, 0, r);
+    const hue = Math.round((i * 360) / n);
+    grad.addColorStop(0, `hsl(${hue}, 92%, 68%)`);
+    grad.addColorStop(1, `hsl(${hue}, 78%, 42%)`);
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, r, start, end);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(255,255,255,.65)";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.rotate(start + seg / 2);
+
+    const img = prizeImages.get(i);
+    if (img) {
+      const imgSize = Math.max(76, Math.min(145, 430 / n + 75));
+      const imgX = r * 0.55 - imgSize / 2;
+      const imgY = -imgSize / 2;
+
+      ctx.save();
+      roundRect(ctx, imgX, imgY, imgSize, imgSize, 18);
+      ctx.clip();
+      ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
+      ctx.restore();
+
+      ctx.strokeStyle = "rgba(255,255,255,.85)";
+      ctx.lineWidth = 4;
+      roundRect(ctx, imgX, imgY, imgSize, imgSize, 18);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "rgba(0,0,0,.72)";
+    ctx.font = "900 25px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(255,255,255,.25)";
+    ctx.shadowBlur = 6;
+    wrapText(ctx, PREMIOS[i].nombre, r * 0.80, 0, Math.min(180, r * .32), 27);
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
+  }
+
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255,255,255,.9)";
+  ctx.lineWidth = 12;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + width, y, x + width, y + height, radius);
+  ctx.arcTo(x + width, y + height, x, y + height, radius);
+  ctx.arcTo(x, y + height, x, y, radius);
+  ctx.arcTo(x, y, x + width, y, radius);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = String(text).split(" ");
+  let line = "";
+  const lines = [];
+
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + " ";
+    if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+      lines.push(line.trim());
+      line = words[n] + " ";
+    } else {
+      line = testLine;
+    }
+  }
+  lines.push(line.trim());
+
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+  lines.slice(0, 2).forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+}
+
+function secureRandomIndex(max) {
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return array[0] % max;
+}
+
+function showResult(index, saved = false) {
+  const p = PREMIOS[index];
+  if (!p) {
+    resultBox.innerHTML = "<span>No se encontró el premio guardado.</span>";
+    resultImg.style.display = "none";
+    return;
+  }
+
+  resultBox.innerHTML = `
+    <div>${saved ? "Resultado guardado:" : "Felicidades, ganaste:"}</div>
+    <b>${escapeHTML(p.nombre)}</b>
+  `;
+  resultImg.src = p.imagen;
+  resultImg.style.display = "block";
+  resultBox.appendChild(resultImg);
+}
+
+function escapeHTML(str) {
+  return String(str).replace(/[&<>"']/g, s => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[s]));
+}
+
+function animateToPrize(index) {
+  return new Promise(resolve => {
+    spinning = true;
+    spinBtn.disabled = true;
+
+    const n = PREMIOS.length;
+    const segDeg = 360 / n;
+
+    // La flecha está arriba. Queremos que el centro del segmento ganador quede bajo la flecha.
+    const prizeCenterDeg = index * segDeg + segDeg / 2;
+    const targetDeg = 360 - prizeCenterDeg;
+    const totalTarget = rotationDeg + (360 * VUELTAS_EXTRA) + normalizeDeg(targetDeg - (rotationDeg % 360));
+
+    const start = performance.now();
+    const from = rotationDeg;
+    const diff = totalTarget - from;
+
+    function frame(now) {
+      const t = Math.min(1, (now - start) / GIRO_DURACION_MS);
+      const eased = 1 - Math.pow(1 - t, 4);
+      rotationDeg = from + diff * eased;
+      drawWheel(rotationDeg);
+
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        rotationDeg = totalTarget % 360;
+        drawWheel(rotationDeg);
+        spinning = false;
+        resolve();
+      }
+    }
+
+    requestAnimationFrame(frame);
+  });
+}
+
+function normalizeDeg(deg) {
+  let d = deg % 360;
+  if (d < 0) d += 360;
+  return d;
+}
+
+/* ==========================================================
+   FLUJO PRINCIPAL
+========================================================== */
+
+async function loginFlow() {
+  try {
+    loginBtn.disabled = true;
+    setStatus("Generando HWID web y conectando con KeyAuth...", "warn");
+
+    if (KEYAUTH.name.includes("TU_") || KEYAUTH.ownerid.includes("TU_")) {
+      throw new Error("Primero debes configurar KEYAUTH.name y KEYAUTH.ownerid dentro del HTML.");
+    }
+
+    if (!PREMIOS.length) {
+      throw new Error("Debes agregar al menos 2 premios en el arreglo PREMIOS.");
+    }
+
+    currentLicense = cleanKey(licenseInput.value);
+    if (!currentLicense) {
+      throw new Error("Ingrese una key válida.");
+    }
+
+    currentHWID = await getWebHWID();
+    await initKeyAuth();
+    await licenseLogin(currentLicense, currentHWID);
+
+    setStatus("Key validada correctamente.\nRevisando si este cliente ya giró...", "ok");
+
+    const used = await getVar(VAR_USADO);
+    const prize = await getVar(VAR_PREMIO);
+
+    if (String(used).trim() === "1" && prize !== "") {
+      const idx = Number(prize);
+      showResult(idx, true);
+      spinBtn.classList.add("hidden");
+      reloadBtn.classList.remove("hidden");
+      setStatus("Esta key ya fue utilizada.\nNo puede girar por segunda vez.", "warn");
+      return;
+    }
+
+    spinBtn.classList.remove("hidden");
+    reloadBtn.classList.remove("hidden");
+    setStatus("Key aceptada. Ruleta desbloqueada.\nPresione GIRAR RULETA para realizar su único intento.", "ok");
+  } catch (err) {
+    setStatus("Error: " + err.message, "err");
+  } finally {
+    loginBtn.disabled = false;
+  }
+}
+
+async function spinFlow() {
+  if (spinning) return;
+
+  try {
+    spinBtn.disabled = true;
+
+    const used = await getVar(VAR_USADO);
+    const prize = await getVar(VAR_PREMIO);
+
+    if (String(used).trim() === "1" && prize !== "") {
+      showResult(Number(prize), true);
+      setStatus("Esta key ya fue utilizada.\nNo puede girar nuevamente.", "warn");
+      return;
+    }
+
+    setStatus("Generando resultado aleatorio seguro...", "warn");
+
+    const index = secureRandomIndex(PREMIOS.length);
+
+    // Guardamos ANTES de animar, para que si cierra la página no pueda repetir.
+    await setVar(VAR_PREMIO, String(index));
+    await setVar(VAR_USADO, "1");
+    await setVar(VAR_FECHA, new Date().toISOString());
+
+    setStatus("Resultado guardado. Girando ruleta...", "ok");
+
+    await animateToPrize(index);
+    showResult(index, false);
+
+    setStatus("Intento completado.\nEste cliente ya no puede girar nuevamente con esta key.", "ok");
+  } catch (err) {
+    setStatus("Error al girar: " + err.message, "err");
+    spinBtn.disabled = false;
+  }
+}
+
+async function reloadSavedResult() {
+  try {
+    if (!sessionid) {
+      setStatus("Primero valida la key.", "warn");
+      return;
+    }
+
+    const used = await getVar(VAR_USADO);
+    const prize = await getVar(VAR_PREMIO);
+
+    if (String(used).trim() === "1" && prize !== "") {
+      showResult(Number(prize), true);
+      setStatus("Resultado recuperado desde KeyAuth.", "ok");
+    } else {
+      setStatus("Esta key todavía no tiene resultado guardado.", "warn");
+    }
+  } catch (err) {
+    setStatus("Error consultando resultado: " + err.message, "err");
+  }
+}
+
+/* ==========================================================
+   EVENTOS
+========================================================== */
+
+loginBtn.addEventListener("click", loginFlow);
+spinBtn.addEventListener("click", spinFlow);
+reloadBtn.addEventListener("click", reloadSavedResult);
+licenseInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") loginFlow();
+});
+
+loadPrizeImages();
+drawWheel();
+</script>
+</body>
+</html>
